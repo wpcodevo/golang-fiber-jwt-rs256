@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -84,21 +84,3 @@ func ValidateToken(token string, publicKey string) (*TokenDetails, error) {
 		UserID:    fmt.Sprint(claims["sub"]),
 	}, nil
 }
-
-// func CreateAuth(userid string, td *TokenDetails) error {
-// 	at := time.Unix(td.AtExpires, 0)
-// 	rt := time.Unix(td.RtExpires, 0)
-// 	now := time.Now()
-
-// 	ctx := context.TODO()
-
-// 	errAccess := initializers.RedisClient.Set(ctx, td.AccessUuid, userid, at.Sub(now)).Err()
-// 	if errAccess != nil {
-// 		return errAccess
-// 	}
-// 	errRefresh := initializers.RedisClient.Set(ctx, td.RefreshUuid, userid, rt.Sub(now)).Err()
-// 	if errRefresh != nil {
-// 		return errRefresh
-// 	}
-// 	return nil
-// }

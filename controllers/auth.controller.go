@@ -11,6 +11,7 @@ import (
 	"github.com/wpcodevo/golang-fiber-jwt-rs256/models"
 	"github.com/wpcodevo/golang-fiber-jwt-rs256/utils"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func SignUpUser(c *fiber.Ctx) error {
@@ -34,7 +35,7 @@ func SignUpUser(c *fiber.Ctx) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
 
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "message": err.Error()})
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
 	}
 
 	newUser := models.User{
@@ -64,19 +65,18 @@ func SignInUser(c *fiber.Ctx) error {
 
 	errors := models.ValidateStruct(payload)
 	if errors != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(errors)
-
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "errors": errors})
 	}
 
 	var user models.User
-	result := initializers.DB.First(&user, "email = ?", strings.ToLower(payload.Email))
-	if result.Error != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "message": "Invalid email or Password"})
+	err := initializers.DB.First(&user, "email = ?", strings.ToLower(payload.Email)).Error
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "message": "Invalid email or Password"})
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
 	}
 
 	config, _ := initializers.LoadConfig(".")
@@ -162,14 +162,19 @@ func RefreshAccessToken(c *fiber.Ctx) error {
 	access_token_uuid := c.Locals("access_token_uuid").(string)
 	_, err = initializers.RedisClient.Del(ctx, access_token_uuid).Result()
 	if err != nil {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "fail", "message": message})
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
 	}
 
 	var user models.User
-	initializers.DB.First(&user, "id = ?", userid)
+	err = initializers.DB.First(&user, "id = ?", userid).Error
 
-	if user.ID.String() != userid {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "fail", "message": "the user belonging to this token no logger exists"})
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "fail", "message": "the user belonging to this token no logger exists"})
+		} else {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
+
+		}
 	}
 
 	accessTokenDetails, err := utils.CreateToken(user.ID.String(), config.AccessTokenExpiresIn, config.AccessTokenPrivateKey)
@@ -227,7 +232,7 @@ func LogoutUser(c *fiber.Ctx) error {
 	access_token_uuid := c.Locals("access_token_uuid").(string)
 	_, err = initializers.RedisClient.Del(ctx, tokenClaims.TokenUuid, access_token_uuid).Result()
 	if err != nil {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "fail", "message": message})
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
 	}
 
 	expired := time.Now().Add(-time.Hour * 24)

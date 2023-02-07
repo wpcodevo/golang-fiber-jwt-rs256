@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 type User struct {
