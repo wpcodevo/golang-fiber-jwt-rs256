@@ -68,15 +68,22 @@ func SignInUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "errors": errors})
 	}
 
+	message := "Invalid email or password"
+
 	var user models.User
 	err := initializers.DB.First(&user, "email = ?", strings.ToLower(payload.Email)).Error
 	if err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "fail", "message": message})
+		} else {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
+
+		}
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
 	if err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": message})
 	}
 
 	config, _ := initializers.LoadConfig(".")
@@ -157,12 +164,6 @@ func RefreshAccessToken(c *fiber.Ctx) error {
 	userid, err := initializers.RedisClient.Get(ctx, tokenClaims.TokenUuid).Result()
 	if err == redis.Nil {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "fail", "message": message})
-	}
-
-	access_token_uuid := c.Locals("access_token_uuid").(string)
-	_, err = initializers.RedisClient.Del(ctx, access_token_uuid).Result()
-	if err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"status": "fail", "message": err.Error()})
 	}
 
 	var user models.User

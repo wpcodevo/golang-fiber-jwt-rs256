@@ -27,7 +27,7 @@ func ConnectDB(config *Config) {
 	DB.Logger = logger.Default.LogMode(logger.Info)
 
 	log.Println("Running Migrations")
-	err = DB.Set("gorm:save_associations", false).AutoMigrate(&models.User{})
+	err = DB.AutoMigrate(&models.User{})
 	if err != nil {
 		log.Fatal("Migration Failed:  \n", err.Error())
 		os.Exit(1)

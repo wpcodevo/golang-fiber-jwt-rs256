@@ -41,7 +41,7 @@ func main() {
 		router.Post("/register", controllers.SignUpUser)
 		router.Post("/login", controllers.SignInUser)
 		router.Get("/logout", middleware.DeserializeUser, controllers.LogoutUser)
-		router.Get("/refresh", middleware.DeserializeUser, controllers.RefreshAccessToken)
+		router.Get("/refresh", controllers.RefreshAccessToken)
 	})
 
 	micro.Get("/users/me", middleware.DeserializeUser, controllers.GetMe)

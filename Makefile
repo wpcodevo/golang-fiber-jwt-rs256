@@ -1,7 +1,7 @@
 dev: 
 	docker-compose up -d
 
-down:
+dev-down:
 	docker-compose down
 
 start-server:
